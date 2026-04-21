@@ -1,0 +1,137 @@
+// _variables.scss
+:root {
+    // ===== 品牌色 =====
+    --primary-color: rgb(60, 130, 191);
+    --primary-hover: rgb(40, 100, 160);
+    --primary-light: rgba(60, 130, 191, 0.12);
+    --secondary-color: rgb(137, 137, 137);
+
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+
+    // ===== 亮色系（預設）=====
+    --bg-primary: #ffffff;
+    --bg-secondary: #f0f6fb;
+    --bg-tertiary: #e2edf6;
+
+    --text-primary: #1a2b3c;
+    --text-secondary: #4a6278;
+    --text-light: #8aaabb;
+
+    --border-color: rgba(60, 130, 191, 0.2);
+
+    // ===== NavBar =====
+    --navbar-bg: rgba(255, 255, 255, 0.85);
+    --navbar-border: rgba(60, 130, 191, 0.25);
+    --navbar-shadow: 0 8px 32px rgba(60, 73, 191, 0.18), 0 2px 8px rgba(0, 0, 0, 0.07);
+
+    // ===== Sidebar 泡泡 =====
+    --bubble-bg: rgba(255, 255, 255, 0.88);
+    --bubble-border: rgba(60, 130, 191, 0.22);
+    --bubble-shadow: 0 8px 32px rgba(60, 130, 191, 0.15), 0 2px 12px rgba(0, 0, 0, 0.08);
+
+    // ===== Sidebar 玻璃（藍色亮色系）=====
+    --sidebar-glass-bg: rgba(60, 130, 191, 0.07);
+    --sidebar-glass-border: rgba(60, 130, 191, 0.22);
+    --sidebar-glass-header: rgba(204, 231, 255, 0.6);
+    --sidebar-glass-hover: rgba(204, 231, 255, 0.8);
+    --sidebar-glass-body: rgba(232, 244, 255, 0.5);
+    --sidebar-glass-input: rgba(60, 130, 191, 0.09);
+
+    // ===== 陰影 =====
+    --shadow-sm: 0 2px 6px rgba(60, 130, 191, 0.08);
+    --shadow-md: 0 4px 16px rgba(60, 130, 191, 0.13);
+    --shadow-lg: 0 8px 28px rgba(60, 130, 191, 0.16);
+    --shadow-xl: 0 16px 48px rgba(60, 130, 191, 0.2);
+
+    // ===== 尺寸 =====
+    --border-radius: 14px;
+    --border-radius-sm: 6px;
+    --border-radius-lg: 20px;
+    --border-radius-pill: 999px;
+
+    --transition-fast: 0.15s ease;
+    --transition-base: 0.28s ease;
+
+    // ===== 佈局 =====
+    --header-height: 75px;
+    --sidebar-width: 450px;
+    --layers-width: 0px;
+
+    --layout-side-pct: 14%;
+    --layout-center-pct: 70%;
+
+    // ===== 全頁背景（亮色 · 藍色系）=====
+    --app-bg-base: #e8f2fa;
+    --app-bg-gradient: linear-gradient(
+        135deg,
+        #dceef8 0%,
+        #c8e0f2 25%,
+        #b8d4ec 50%,
+        #a8c8e6 75%,
+        #98bce0 100%
+    );
+    --app-glow-color: rgba(60, 130, 191, 0.28);
+    --app-dark-vignette: rgba(20, 70, 130, 0.12);
+    --app-grid-color: rgba(60, 130, 191, 0.07);
+}
+
+// ===== 暗色系 =====
+// ⚠️ 只用 data-theme，不用 prefers-color-scheme
+[data-theme='dark'] {
+    // ===== 背景色（深藍黑）=====
+    --bg-primary: #090f16;
+    --bg-secondary: #0d1620;
+    --bg-tertiary: #121e2c;
+
+    --text-primary: #d8e8f2;
+    --text-secondary: #6a8fa8;
+    --text-light: #334455;
+
+    --border-color: rgba(60, 130, 191, 0.18);
+
+    // ===== NavBar（暗色）=====
+    --navbar-bg: rgba(8, 16, 26, 0.9);
+    --navbar-border: rgba(60, 130, 191, 0.28);
+    --navbar-shadow: 0 0px 16px rgba(117, 60, 191, 0.25), 0 2px 8px rgba(0, 0, 0, 0.55);
+
+    // ===== Sidebar 泡泡（暗色）=====
+    --bubble-bg: rgba(10, 20, 34, 0.92);
+    --bubble-border: rgba(60, 130, 191, 0.22);
+    --bubble-shadow: 0 8px 32px rgba(60, 130, 191, 0.18), 0 2px 12px rgba(0, 0, 0, 0.5);
+
+    // ===== Sidebar 玻璃（藍色暗色系）=====
+    --sidebar-glass-bg: rgba(60, 130, 191, 0.05);
+    --sidebar-glass-border: rgba(60, 130, 191, 0.16);
+    --sidebar-glass-header: rgba(60, 130, 191, 0.6);
+    --sidebar-glass-hover: rgba(60, 130, 191, 0.8);
+    --sidebar-glass-body: rgba(60, 130, 191, 0.3);
+    --sidebar-glass-input: rgba(60, 130, 191, 0.07);
+
+    // ===== 品牌色（暗色保持一致）=====
+    --primary-color: rgb(60, 130, 191);
+    --primary-hover: rgb(40, 100, 160);
+    --primary-light: rgba(60, 130, 191, 0.12);
+
+    // ===== 陰影（暗色）=====
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+
+    // ===== 全頁背景（暗色 · 深藍黑）=====
+    --app-bg-base: #0b050f;
+    --app-bg-gradient: linear-gradient(
+        135deg,
+        #180c28 0%,
+        #160920 25%,
+        #0f0618 50%,
+        #0a0412 75%,
+        #08020d 100%
+    );
+    --app-glow-color: rgba(60, 130, 191, 0.3);
+    --app-dark-vignette: rgba(2, 8, 18, 0.75);
+    --app-grid-color: rgba(60, 130, 191, 0.05);
+}
