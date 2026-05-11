@@ -7,38 +7,56 @@
             ══════════════════════════════════════ -->
             <div v-if="hasMachine" class="canvas-toolbar">
                 <div class="toolbar-group">
-                    <button class="toolbar-btn" title="放大 (Ctrl +)" @click="handleZoomIn">
-                        <i class="fas fa-search-plus"></i>
-                    </button>
-                    <button class="toolbar-btn" title="縮小 (Ctrl -)" @click="handleZoomOut">
-                        <i class="fas fa-search-minus"></i>
-                    </button>
-                    <div class="zoom-display">{{ localZoom }}%</div>
-                    <button class="toolbar-btn" title="重設縮放 (100%)" @click="handleResetZoom">
-                        <i class="fas fa-compress-arrows-alt"></i>
-                    </button>
-                    <!-- ★ toolbar-divider 與 bg-control 已完整移除 -->
+                    <!-- 2D 模式才顯示縮放 -->
+                    <template v-if="!is3DMode">
+                        <button class="toolbar-btn" title="放大 (Ctrl +)" @click="handleZoomIn">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="toolbar-btn" title="縮小 (Ctrl -)" @click="handleZoomOut">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <div class="zoom-display">{{ localZoom }}%</div>
+                        <button
+                            class="toolbar-btn"
+                            title="重設縮放 (100%)"
+                            @click="handleResetZoom"
+                        >
+                            <i class="fas fa-compress-arrows-alt"></i>
+                        </button>
+                    </template>
                 </div>
+
                 <div class="toolbar-group">
-                    <button class="toolbar-btn" title="預覽" @click="$emit('open-preview')">
-                        <i class="fas fa-eye"></i>
-                        <span class="btn-label">預覽</span>
+                    <!-- ★ 2D/3D 切換按鈕 -->
+                    <button
+                        class="toolbar-btn view-toggle-btn"
+                        :class="{ 'view-toggle-btn--active': is3DMode }"
+                        :title="is3DMode ? '切換回 2D 編輯' : '切換到 3D 預覽'"
+                        @click="toggleViewMode"
+                    >
+                        <i :class="is3DMode ? 'fas fa-pen' : 'fas fa-cube'"></i>
+                        <span class="btn-label">{{ is3DMode ? '2D 編輯' : '3D 預覽' }}</span>
                     </button>
+
                     <div class="toolbar-divider"></div>
-                    <button
-                        class="toolbar-btn toolbar-btn--danger"
-                        title="刪除選取 (Delete)"
-                        @click="$emit('delete-selected')"
-                    >
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                    <button
-                        class="toolbar-btn toolbar-btn--danger"
-                        title="清空畫布"
-                        @click="handleClearCanvas"
-                    >
-                        <i class="fas fa-eraser"></i>
-                    </button>
+
+                    <!-- 2D 模式才顯示編輯操作 -->
+                    <template v-if="!is3DMode">
+                        <button
+                            class="toolbar-btn toolbar-btn--danger"
+                            title="刪除選取 (Delete)"
+                            @click="$emit('delete-selected')"
+                        >
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                        <button
+                            class="toolbar-btn toolbar-btn--danger"
+                            title="清空畫布"
+                            @click="handleClearCanvas"
+                        >
+                            <i class="fas fa-eraser"></i>
+                        </button>
+                    </template>
                 </div>
             </div>
 
@@ -62,17 +80,27 @@
 
                 <!-- 已選機台 -->
                 <template v-else>
+                    <!-- ★ 3D 視圖層 -->
+                    <Transition name="view-fade">
+                        <div v-if="is3DMode" class="three-overlay">
+                            <ThreePreview
+                                :design-image-url="currentPreviewUrl"
+                                :product-config="currentProductConfig"
+                                :machine-category="currentMachineCategory"
+                            />
+                        </div>
+                    </Transition>
+
+                    <!-- 2D 編輯層 -->
                     <div class="canvas-centering">
                         <div ref="zoomTargetRef" class="zoom-target" :style="zoomTargetStyle">
                             <div class="machine-stage" :style="stageStyle">
-                                <!-- ★ 場景背景：machine-stage 最底層，z-index: 0 -->
                                 <div
                                     v-if="sceneLayerVisible"
                                     class="scene-bg-layer"
                                     :style="sceneLayerStyle"
                                 />
 
-                                <!-- 機台圖片 z-index: 1 -->
                                 <img
                                     v-if="machineImageLoaded && currentMachineImage"
                                     class="machine-base-img"
@@ -92,7 +120,6 @@
                                     <span>機台圖無法載入</span>
                                 </div>
 
-                                <!-- 印刷區域 z-index: 2 -->
                                 <div class="canvas-print-area" :style="printAreaStyle">
                                     <canvas
                                         id="main-canvas"
@@ -101,8 +128,27 @@
                                     ></canvas>
                                 </div>
 
-                                <!-- 印刷區域邊框 z-index: 3 -->
                                 <div class="print-area-border" :style="printAreaStyle"></div>
+
+                                <!-- ★ 尺寸標註 -->
+                                <div
+                                    v-if="hasMachine && !is3DMode"
+                                    class="dimension-labels"
+                                    :style="dimensionContainerStyle"
+                                >
+                                    <!-- 上方寬度標註 -->
+                                    <div class="dimension-top" :style="dimensionTopStyle">
+                                        <div
+                                            class="dimension-line dimension-line--horizontal"
+                                        ></div>
+                                        <span class="dimension-value">{{ dimensionWidth }}</span>
+                                    </div>
+                                    <!-- 左側高度標註 -->
+                                    <div class="dimension-left" :style="dimensionLeftStyle">
+                                        <div class="dimension-line dimension-line--vertical"></div>
+                                        <span class="dimension-value">{{ dimensionHeight }}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -116,6 +162,7 @@
     import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
     import { confirmDanger } from '../utils/swal.js';
     import { SCENES, PRODUCTS_CONFIG } from '../config/products';
+    import ThreePreview from './ThreePreview.vue';
 
     // ═══════════════════════════════════════════════════
     //  常數
@@ -125,12 +172,6 @@
     const ZOOM_MAX = 300;
     const ZOOM_DEFAULT = 100;
     const STAGE_PADDING = 80;
-
-    /**
-     * 場景背景基準縮放比例
-     * 當 zoom = SCENE_BASE_SCALE * 100 (25%) 時，場景背景剛好填滿 wrapper
-     * zoom 越大，背景越大（zoom in 效果）
-     */
     const SCENE_BASE_SCALE = 0.25;
 
     // ═══════════════════════════════════════════════════
@@ -140,7 +181,8 @@
         zoomLevel: { type: Number, default: null },
         selectedMachine: { type: String, default: null },
         sceneBackground: { type: String, default: null },
-        selectedObjectType: { type: String, default: null }
+        selectedObjectType: { type: String, default: null },
+        getPreviewUrl: { type: Function, default: null }
     });
 
     // ═══════════════════════════════════════════════════
@@ -154,8 +196,8 @@
         'reset-view',
         'clear-canvas',
         'delete-selected',
-        'open-preview',
-        'update:zoom-level'
+        'update:zoom-level',
+        'update:is3DMode'
     ]);
 
     // ═══════════════════════════════════════════════════
@@ -166,22 +208,46 @@
     const canvasRef = ref(null);
 
     // ═══════════════════════════════════════════════════
+    //  2D / 3D 切換狀態
+    // ═══════════════════════════════════════════════════
+    const is3DMode = ref(false);
+    const currentPreviewUrl = ref('');
+
+    const toggleViewMode = async () => {
+        if (!is3DMode.value) {
+            if (props.getPreviewUrl) {
+                currentPreviewUrl.value = props.getPreviewUrl();
+            }
+            is3DMode.value = true;
+        } else {
+            is3DMode.value = false;
+        }
+        emit('update:is3DMode', is3DMode.value);
+    };
+
+    // ═══════════════════════════════════════════════════
     //  機台判斷
     // ═══════════════════════════════════════════════════
     const hasMachine = computed(
         () => props.selectedMachine !== null && props.selectedMachine !== undefined
     );
 
+    const currentMachineCategory = computed(() => {
+        if (!props.selectedMachine) return null;
+        const config = PRODUCTS_CONFIG[props.selectedMachine];
+        return config?.category ?? null;
+    });
+
     // ═══════════════════════════════════════════════════
     //  產品設定
     // ═══════════════════════════════════════════════════
     const currentProductConfig = computed(() => {
-        if (!props.selectedMachine || props.selectedMachine === 'pure') return null;
+        if (!props.selectedMachine) return null;
         return PRODUCTS_CONFIG[props.selectedMachine] ?? null;
     });
 
     // ═══════════════════════════════════════════════════
-    //  Stage 尺寸（固定 800×600）
+    //  Stage 尺寸
     // ═══════════════════════════════════════════════════
     const STAGE_W = 800;
     const STAGE_H = 600;
@@ -194,17 +260,26 @@
     // ═══════════════════════════════════════════════════
     //  印刷區域
     // ═══════════════════════════════════════════════════
-    const PRINT_W = 250;
-    const PRINT_H = Math.round((PRINT_W * 52) / 48);
-
-    const DEFAULT_PRINT_AREA = {
-        left: Math.round((STAGE_W - PRINT_W) / 2),
-        top: Math.round((STAGE_H - PRINT_H) / 2),
-        width: PRINT_W,
-        height: PRINT_H
+    const PRINT_BASE_W = 250;
+    const PRINT_SIZE_MAP = {
+        Cube: { w: 48, h: 26 },
+        Duo: { w: 48, h: 52 }
     };
-
-    const printArea = computed(() => currentProductConfig.value?.printArea ?? DEFAULT_PRINT_AREA);
+    const printArea = computed(() => {
+        if (currentProductConfig.value?.printArea) {
+            return currentProductConfig.value.printArea;
+        }
+        const category = currentMachineCategory.value;
+        const size = PRINT_SIZE_MAP[category] ?? { w: 48, h: 52 };
+        const pw = PRINT_BASE_W;
+        const ph = Math.round((pw * size.h) / size.w);
+        return {
+            left: Math.round((STAGE_W - pw) / 2),
+            top: Math.round((STAGE_H - ph) / 2),
+            width: pw,
+            height: ph
+        };
+    });
 
     const printAreaStyle = computed(() => ({
         left: `${printArea.value.left}px`,
@@ -212,6 +287,52 @@
         width: `${printArea.value.width}px`,
         height: `${printArea.value.height}px`
     }));
+
+    // ═══════════════════════════════════════════════════
+    //  尺寸標註
+    // ═══════════════════════════════════════════════════
+    const DIMENSION_OFFSET_TOP = 40; // 上方標註距離虛線框的距離
+    const DIMENSION_OFFSET_LEFT = 10; // 左側標註距離虛線框的距離
+
+    const dimensionWidth = computed(() => '48.3mm');
+
+    const dimensionHeight = computed(() => {
+        const category = currentMachineCategory.value;
+        const size = PRINT_SIZE_MAP[category];
+        return size ? String(size.h) + 'mm' : '52mm';
+    });
+
+    const dimensionContainerStyle = computed(() => ({
+        position: 'absolute',
+        inset: '0',
+        pointerEvents: 'none',
+        zIndex: 4
+    }));
+
+    const dimensionTopStyle = computed(() => {
+        const pa = printArea.value;
+        return {
+            position: 'absolute',
+            left: `${pa.left}px`,
+            top: `${pa.top - DIMENSION_OFFSET_TOP}px`,
+            width: `${pa.width}px`,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+        };
+    });
+    const dimensionLeftStyle = computed(() => {
+        const pa = printArea.value;
+        return {
+            position: 'absolute',
+            left: `${pa.left - DIMENSION_OFFSET_LEFT}px`,
+            top: `${pa.top}px`,
+            height: `${pa.height}px`,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center'
+        };
+    });
 
     // ═══════════════════════════════════════════════════
     //  縮放狀態
@@ -238,17 +359,14 @@
         transition: 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
     }));
 
-    // ── 縮放操作 ──────────────────────────────────────
     const handleZoomIn = () => {
         localZoom.value = localZoom.value + ZOOM_STEP;
         emit('zoom-in');
     };
-
     const handleZoomOut = () => {
         localZoom.value = localZoom.value - ZOOM_STEP;
         emit('zoom-out');
     };
-
     const handleResetZoom = () => {
         localZoom.value = ZOOM_DEFAULT;
         emit('reset-view');
@@ -264,12 +382,12 @@
     };
 
     const handleWheel = (e) => {
+        if (is3DMode.value) return;
         if (!e.ctrlKey && !e.metaKey) return;
         e.preventDefault();
         localZoom.value = localZoom.value + (e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP);
     };
 
-    // 同步外部 zoomLevel prop
     watch(
         () => props.zoomLevel,
         (val) => {
@@ -280,7 +398,7 @@
     );
 
     // ═══════════════════════════════════════════════════
-    //  Wrapper 尺寸偵測（供場景背景計算使用）
+    //  Wrapper 尺寸偵測
     // ═══════════════════════════════════════════════════
     const wrapperWidth = ref(0);
     const wrapperHeight = ref(0);
@@ -288,20 +406,11 @@
 
     // ═══════════════════════════════════════════════════
     //  場景背景
-    //
-    //  scene-bg-layer 放在 machine-stage 內（z-index:0），
-    //  尺寸 = wrapper 尺寸 / SCENE_BASE_SCALE，
-    //  這樣 scale = SCENE_BASE_SCALE(0.25) 時視覺剛好填滿 wrapper，
-    //  scale 越大背景越大，產生 zoom-in 效果。
     // ═══════════════════════════════════════════════════
-    const sceneLayerVisible = computed(() => {
-        // 有場景圖才顯示場景層，網格改由 canvas-wrapper 負責
-        return !!SCENES.find((s) => s.id === props.sceneBackground);
-    });
+    const sceneLayerVisible = computed(() => !!SCENES.find((s) => s.id === props.sceneBackground));
 
     const sceneLayerStyle = computed(() => {
         if (!sceneLayerVisible.value) return {};
-
         const scene = SCENES.find((s) => s.id === props.sceneBackground);
         const w = wrapperWidth.value || STAGE_W;
         const h = wrapperHeight.value || STAGE_H;
@@ -337,7 +446,6 @@
             machineImageLoaded.value = false;
             machineImageError.value = false;
             if (!url) return;
-
             const img = new Image();
             img.onload = () => {
                 machineImageLoaded.value = true;
@@ -366,6 +474,7 @@
     //  鍵盤快捷鍵
     // ═══════════════════════════════════════════════════
     const handleKeyDown = (e) => {
+        if (is3DMode.value) return;
         const tag = document.activeElement?.tagName;
         if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
 
@@ -417,7 +526,6 @@
         resizeObserver?.disconnect();
     });
 
-    // 印刷區域變更時重新通知
     watch(printArea, async (newArea) => {
         await nextTick();
         emit('canvas-ready', {
@@ -427,11 +535,21 @@
         });
     });
 
-    // 切換機台時重新 fit
     watch(
         () => props.selectedMachine,
-        async () => {
+        async (newVal, oldVal) => {
+            if (newVal === oldVal) return;
+            is3DMode.value = false;
+            emit('update:is3DMode', false);
+
             await nextTick();
+
+            emit('canvas-ready', {
+                wrapperEl: wrapperRef.value,
+                printArea: printArea.value,
+                perspective: currentProductConfig.value?.perspective ?? null
+            });
+
             setTimeout(handleFitScreen, 200);
         }
     );
@@ -442,6 +560,7 @@
     defineExpose({
         wrapperRef,
         canvasRef,
+        is3DMode,
         zoomIn: handleZoomIn,
         zoomOut: handleZoomOut,
         resetZoom: handleResetZoom,
@@ -521,14 +640,20 @@
         border-color: transparent;
         box-shadow: 0 2px 8px rgba(60, 130, 191, 0.3);
     }
-    .toolbar-btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        pointer-events: none;
-    }
     .toolbar-btn--danger:hover {
         background: var(--danger-color);
         box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+    }
+
+    .view-toggle-btn--active {
+        background: var(--primary-color);
+        color: #fff;
+        border-color: transparent;
+        box-shadow: 0 2px 8px rgba(60, 130, 191, 0.35);
+    }
+    .view-toggle-btn--active:hover {
+        background: var(--primary-color);
+        filter: brightness(1.1);
     }
 
     .toolbar-divider {
@@ -558,141 +683,14 @@
     }
 
     /* ══════════════════════════════════════════════════
-   背景控制
-══════════════════════════════════════════════════ */
-    .bg-control {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius-pill);
-        height: 34px;
-    }
-
-    .bg-label {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text-secondary);
-        white-space: nowrap;
-        letter-spacing: 0.03em;
-    }
-
-    .transparent-btn {
-        width: 24px;
-        height: 24px;
-        padding: 0;
-        border: 2px solid var(--border-color);
-        border-radius: 5px;
-        cursor: pointer;
-        background: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition:
-            border-color 0.15s,
-            box-shadow 0.15s;
-        flex-shrink: 0;
-        overflow: hidden;
-    }
-    .transparent-btn:hover {
-        border-color: var(--primary-color);
-    }
-    .transparent-btn.is-active {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
-    }
-
-    .color-picker-wrap {
-        position: relative;
-        width: 24px;
-        height: 24px;
-        cursor: pointer;
-        flex-shrink: 0;
-    }
-    .color-picker-wrap input[type='color'] {
-        position: absolute;
-        inset: 0;
-        opacity: 0;
-        width: 100%;
-        height: 100%;
-        cursor: pointer;
-        padding: 0;
-        border: none;
-    }
-    .color-preview {
-        display: block;
-        width: 24px;
-        height: 24px;
-        border-radius: 5px;
-        border: 2px solid var(--border-color);
-        transition: border-color 0.15s;
-        pointer-events: none;
-    }
-    .color-preview.is-transparent {
-        background-image: linear-gradient(45deg, #ccc 25%, transparent 25%),
-            linear-gradient(-45deg, #ccc 25%, transparent 25%),
-            linear-gradient(45deg, transparent 75%, #ccc 75%),
-            linear-gradient(-45deg, transparent 75%, #ccc 75%);
-        background-size: 8px 8px;
-        background-position:
-            0 0,
-            0 4px,
-            4px -4px,
-            -4px 0;
-        background-color: #fff;
-    }
-    .color-picker-wrap:hover .color-preview {
-        border-color: var(--primary-color);
-    }
-
-    .preset-colors {
-        display: flex;
-        align-items: center;
-        gap: 3px;
-    }
-    .preset-dot {
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        border: 2px solid transparent;
-        cursor: pointer;
-        transition:
-            transform 0.15s,
-            border-color 0.15s,
-            box-shadow 0.15s;
-        padding: 0;
-        flex-shrink: 0;
-        outline: none;
-    }
-    .preset-dot:hover {
-        transform: scale(1.25);
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-    }
-    .preset-dot.is-active {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
-        transform: scale(1.15);
-    }
-
-    /* ══════════════════════════════════════════════════
    Canvas 區域
 ══════════════════════════════════════════════════ */
-
-    /*
- * canvas-wrapper
- * overflow: hidden → 裁切 scene-bg-layer 超出的部分
- * 棋盤格背景 → 表示透明區域
- */
     .canvas-wrapper {
         flex: 1;
         min-height: 0;
         overflow: hidden;
         position: relative;
         border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
-        border: none;
-        /* ★ 透明棋盤格（Photoshop 風格） */
         background-color: transparent;
         background-size: 16px 16px;
         background-position:
@@ -702,10 +700,23 @@
             -8px 0;
     }
 
-    /*
-    * canvas-centering
-    * 覆蓋整個 wrapper，負責將 zoom-target 置中
-    */
+    .three-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 20;
+        border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+        overflow: hidden;
+    }
+
+    .view-fade-enter-active,
+    .view-fade-leave-active {
+        transition: opacity 0.3s ease;
+    }
+    .view-fade-enter-from,
+    .view-fade-leave-to {
+        opacity: 0;
+    }
+
     .canvas-centering {
         position: absolute;
         border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
@@ -718,11 +729,6 @@
         background-color: transparent;
     }
 
-    /*
- * zoom-target
- * 縮放目標，transform: scale() 套用於此
- * overflow: visible 讓 scene-bg-layer 可超出邊界（由 wrapper 裁切）
- */
     .zoom-target {
         position: relative;
         flex-shrink: 0;
@@ -733,11 +739,6 @@
         overflow: visible;
     }
 
-    /*
- * machine-stage
- * 固定 800×600，z-index:1 在場景背景之上
- * overflow: visible 讓 scene-bg-layer 超出
- */
     .machine-stage {
         position: relative;
         flex-shrink: 0;
@@ -746,12 +747,6 @@
         filter: drop-shadow(0 8px 32px rgba(0, 0, 0, 0.28));
     }
 
-    /*
- * scene-bg-layer
- * 以 machine-stage 中心為基準向四周展開
- * 尺寸由 sceneLayerStyle 動態注入
- * z-index: 0 → 在機台圖片之下
- */
     .scene-bg-layer {
         position: absolute;
         top: 50%;
@@ -826,6 +821,7 @@
         height: 100% !important;
         cursor: crosshair;
         background: transparent;
+        margin-bottom: 5rem;
     }
     .print-area-border {
         position: absolute;
@@ -833,10 +829,99 @@
         pointer-events: none;
         border: 2px dashed rgba(150, 150, 150, 0.75);
         z-index: 3;
-        opacity: 1; /* ★ 改：永遠顯示 */
     }
 
-    /* 無機台狀態 */
+    /* ══════════════════════════════════════════════════
+   尺寸標註
+══════════════════════════════════════════════════ */
+    .dimension-labels {
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .dimension-top {
+        transform: translateY(-100%);
+    }
+
+    .dimension-top .dimension-value {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: transparent;
+        padding: 1px 6px;
+        border-radius: 3px;
+        white-space: nowrap;
+        letter-spacing: 0.02em;
+    }
+
+    .dimension-left {
+        transform: translateX(-100%);
+    }
+
+    .dimension-left .dimension-value {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: transparent;
+        padding: 1px 6px;
+        border-radius: 3px;
+        white-space: nowrap;
+        writing-mode: vertical-lr;
+        text-orientation: mixed;
+        transform: rotate(180deg);
+        letter-spacing: 0.02em;
+    }
+
+    .dimension-line--horizontal {
+        width: 100%;
+        height: 1px;
+        background: var(--text-secondary);
+        opacity: 0.4;
+        margin-bottom: 2px;
+        position: relative;
+    }
+    .dimension-line--horizontal::before,
+    .dimension-line--horizontal::after {
+        content: '';
+        position: absolute;
+        top: -3px;
+        width: 1px;
+        height: 7px;
+        background: var(--text-secondary);
+        opacity: 0.6;
+    }
+    .dimension-line--horizontal::before {
+        left: 0;
+    }
+    .dimension-line--horizontal::after {
+        right: 0;
+    }
+
+    .dimension-line--vertical {
+        width: 1px;
+        height: 100%;
+        background: var(--text-secondary);
+        opacity: 0.4;
+        margin-right: 2px;
+        position: relative;
+    }
+    .dimension-line--vertical::before,
+    .dimension-line--vertical::after {
+        content: '';
+        position: absolute;
+        left: -3px;
+        height: 1px;
+        width: 7px;
+        background: var(--text-secondary);
+        opacity: 0.6;
+    }
+    .dimension-line--vertical::before {
+        top: 0;
+    }
+    .dimension-line--vertical::after {
+        bottom: 0;
+    }
+
     .canvas-wrapper--no-machine {
         background-image: none;
         background-color: var(--bg-secondary);

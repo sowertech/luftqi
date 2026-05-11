@@ -35,6 +35,27 @@
             </div>
         </div>
 
+        <!-- ★ 粗體 / 斜體 -->
+        <div class="form-group">
+            <label>樣式</label>
+            <div class="toggle-row">
+                <button
+                    :class="['style-btn', { active: isBold }]"
+                    title="粗體"
+                    @click="isBold = !isBold"
+                >
+                    <b>B</b>
+                </button>
+                <button
+                    :class="['style-btn', { active: isItalic }]"
+                    title="斜體"
+                    @click="isItalic = !isItalic"
+                >
+                    <i>I</i>
+                </button>
+            </div>
+        </div>
+
         <!-- 文字顏色 -->
         <div class="form-group">
             <label>文字顏色</label>
@@ -49,12 +70,6 @@
             <i class="fas fa-plus"></i>
             新增至畫布
         </button>
-
-        <!-- 提示 -->
-        <div class="hint">
-            <i class="fas fa-info-circle"></i>
-            雙擊畫布上的文字可直接編輯
-        </div>
     </div>
 </template>
 
@@ -68,6 +83,8 @@
     const fontFamily = ref('Microsoft JhengHei');
     const fontSize = ref(16);
     const fontColor = ref('#000000');
+    const isBold = ref(false);
+    const isItalic = ref(false);
 
     const handleAddText = () => {
         if (!textContent.value.trim()) {
@@ -78,7 +95,9 @@
             content: textContent.value,
             fontFamily: fontFamily.value,
             fontSize: fontSize.value,
-            color: fontColor.value
+            color: fontColor.value,
+            bold: isBold.value,
+            italic: isItalic.value
         });
         textContent.value = '';
     };
@@ -133,6 +152,40 @@
         min-height: 72px;
     }
 
+    /* ★ 粗體 / 斜體 toggle */
+    .toggle-row {
+        display: flex;
+        gap: 8px;
+    }
+
+    .style-btn {
+        width: 36px;
+        height: 32px;
+        border-radius: var(--border-radius);
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--transition-fast);
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .style-btn:hover {
+        background: var(--primary-light);
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    .style-btn.active {
+        background: var(--primary-color);
+        border-color: transparent;
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(60, 130, 191, 0.35);
+    }
+
     .color-row {
         display: flex;
         align-items: center;
@@ -155,7 +208,6 @@
         font-family: monospace;
     }
 
-    /* 新增按鈕 */
     .add-btn {
         width: 100%;
         padding: 10px;
@@ -168,7 +220,6 @@
         margin-bottom: 10px;
     }
 
-    /* 提示 */
     .hint {
         display: flex;
         align-items: center;

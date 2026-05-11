@@ -2,93 +2,185 @@
 
 import { assetUrl } from '../utils/path';
 
-// ── 印刷區固定尺寸 ──────────────────────────────
-const PRINT_W = 250; // 48 份
-const PRINT_H = Math.round((PRINT_W * 52) / 48); // = 271px（52 份）
-
-/**
- * CUBE 系列 perspective
- * 讓四個角點圍出的 bounding box 剛好是 250×271
- * 並讓印刷區在底圖（800×600）中水平置中
- */
 const STAGE_W = 800;
 const STAGE_H = 600;
+const PRINT_W = 265;
 
-// 置中：left = (800 - 250) / 2 = 275
-const PA_LEFT = Math.round((STAGE_W - PRINT_W) / 2); // 275
-const PA_TOP = Math.round((STAGE_H - PRINT_H) / 2); // 164（垂直也置中）
+// ── Cube: 48 × 26 ──────────────────────────────────────
+const CUBE_PRINT_H = Math.round((PRINT_W * 26) / 48);
+const CUBE_PA_LEFT = Math.round((STAGE_W - PRINT_W) / 2);
+const CUBE_PA_TOP = Math.round((STAGE_H - CUBE_PRINT_H) / 3.6);
 
 const CUBE_PERSPECTIVE = {
-    topLeft: { x: PA_LEFT, y: PA_TOP },
-    topRight: { x: PA_LEFT + PRINT_W, y: PA_TOP },
-    bottomLeft: { x: PA_LEFT, y: PA_TOP + PRINT_H },
-    bottomRight: { x: PA_LEFT + PRINT_W, y: PA_TOP + PRINT_H },
+    topLeft: { x: CUBE_PA_LEFT, y: CUBE_PA_TOP },
+    topRight: { x: CUBE_PA_LEFT + PRINT_W, y: CUBE_PA_TOP },
+    bottomLeft: { x: CUBE_PA_LEFT, y: CUBE_PA_TOP + CUBE_PRINT_H },
+    bottomRight: { x: CUBE_PA_LEFT + PRINT_W, y: CUBE_PA_TOP + CUBE_PRINT_H },
     width: PRINT_W,
-    height: PRINT_H
+    height: CUBE_PRINT_H
 };
 
+// ── Duo: 48 × 52 ───────────────────────────────────────
+const DUO_PRINT_H = Math.round((PRINT_W * 52) / 48);
+const DUO_PA_LEFT = Math.round((STAGE_W - PRINT_W) / 2);
+const DUO_PA_TOP = Math.round((STAGE_H - DUO_PRINT_H) / 5.8);
+
 const DUO_PERSPECTIVE = {
-    topLeft: { x: PA_LEFT, y: PA_TOP },
-    topRight: { x: PA_LEFT + PRINT_W, y: PA_TOP },
-    bottomLeft: { x: PA_LEFT, y: PA_TOP + PRINT_H },
-    bottomRight: { x: PA_LEFT + PRINT_W, y: PA_TOP + PRINT_H },
+    topLeft: { x: DUO_PA_LEFT, y: DUO_PA_TOP },
+    topRight: { x: DUO_PA_LEFT + PRINT_W, y: DUO_PA_TOP },
+    bottomLeft: { x: DUO_PA_LEFT, y: DUO_PA_TOP + DUO_PRINT_H },
+    bottomRight: { x: DUO_PA_LEFT + PRINT_W, y: DUO_PA_TOP + DUO_PRINT_H },
     width: PRINT_W,
-    height: PRINT_H
+    height: DUO_PRINT_H
 };
 
 const CANVAS_SIZE = { width: STAGE_W, height: STAGE_H };
 
-/**
- * 由 perspective 四個角點自動推算矩形 printArea
- */
 function perspectiveToPrintArea(p) {
     const xs = [p.topLeft.x, p.topRight.x, p.bottomLeft.x, p.bottomRight.x];
     const ys = [p.topLeft.y, p.topRight.y, p.bottomLeft.y, p.bottomRight.y];
-    const left = Math.min(...xs);
-    const top = Math.min(...ys);
-    const right = Math.max(...xs);
-    const bottom = Math.max(...ys);
     return {
-        left,
-        top,
-        width: right - left, // = PRINT_W = 250
-        height: bottom - top // = PRINT_H = 271
+        left: Math.min(...xs),
+        top: Math.min(...ys),
+        width: Math.max(...xs) - Math.min(...xs),
+        height: Math.max(...ys) - Math.min(...ys)
     };
 }
 
-function createProduct(id, name, perspective) {
+// ── 顏色對應表 ────────────────────────────────────────────
+export const COLOR_MAP = {
+    B: { hex: '#1a1a1a', name: 'Black' },
+    BG: { hex: '#c8a96e', name: 'Beige/Gold' },
+    Blue: { hex: '#3a6bc8', name: 'Blue' },
+    G: { hex: '#d4af37', name: 'Gold' },
+    P: { hex: '#e8a0bf', name: 'Pink' },
+    S: { hex: '#a8a8b0', name: 'Silver' },
+    Green: { hex: '#4a9a6a', name: 'Green' },
+    R: { hex: '#c0392b', name: 'Red' }
+};
+
+// ── 系列分類 ──────────────────────────────────────────────
+export const CATEGORIES = [
+    { id: 'pure', name: '純設計稿', icon: 'fas fa-layer-group' },
+    { id: 'Cube', name: 'Cube', icon: 'fas fa-cube' },
+    { id: 'Duo', name: 'Duo', icon: 'fas fa-mobile-alt' }
+];
+
+// ── 3D 機台分區顏色設定 ───────────────────────────────────
+export const DEFAULT_ZONE_COLORS = {
+    top: '#aec6e8',
+    vent: '#e8d87a',
+    base: '#d0d0d0'
+};
+
+export const DEFAULT_ZONE_RATIO = {
+    baseMax: 0.15,
+    ventMax: 0.3
+};
+
+// ── createProduct ─────────────────────────────────────────
+function createProduct(id, name, perspective, category, colorKey, zoneColors = {}) {
     return {
         id,
         name,
+        category,
+        colorKey,
+        color: COLOR_MAP[colorKey]?.hex ?? '#888',
+        colorName: COLOR_MAP[colorKey]?.name ?? colorKey,
         thumbnail: assetUrl(`/assets/products/${id}.png`),
         baseImage: assetUrl(`/assets/products/${id}.png`),
         canvasSize: CANVAS_SIZE,
         perspective,
-        printArea: perspectiveToPrintArea(perspective)
+        printArea: perspectiveToPrintArea(perspective),
+        zoneColors: {
+            top: zoneColors.top ?? DEFAULT_ZONE_COLORS.top,
+            vent: zoneColors.vent ?? DEFAULT_ZONE_COLORS.vent,
+            base: zoneColors.base ?? DEFAULT_ZONE_COLORS.base
+        },
+        zoneRatio: {
+            baseMax: zoneColors.baseMax ?? DEFAULT_ZONE_RATIO.baseMax,
+            ventMax: zoneColors.ventMax ?? DEFAULT_ZONE_RATIO.ventMax
+        }
     };
 }
 
 export const PRODUCTS_CONFIG = {
-    // ── Cube 系列 ──────────────────────────────────────────
-    Cube_B: createProduct('Cube_B', 'Cube Black', CUBE_PERSPECTIVE),
-    Cube_BG: createProduct('Cube_BG', 'Cube Beige', CUBE_PERSPECTIVE),
-    Cube_Blue: createProduct('Cube_Blue', 'Cube Blue', CUBE_PERSPECTIVE),
-    Cube_G: createProduct('Cube_G', 'Cube Gold', CUBE_PERSPECTIVE),
-    Cube_P: createProduct('Cube_P', 'Cube Pink', CUBE_PERSPECTIVE),
-    Cube_S: createProduct('Cube_S', 'Cube Silver', CUBE_PERSPECTIVE),
+    // ── Cube 系列（48 × 26）──────────────────────────────
+    Cube_B: createProduct('Cube_B', 'Cube Black', CUBE_PERSPECTIVE, 'Cube', 'B', {
+        top: '#2a2a2a',
+        vent: '#111111',
+        base: '#2a2a2a'
+    }),
+    Cube_BG: createProduct('Cube_BG', 'Cube Beige', CUBE_PERSPECTIVE, 'Cube', 'BG', {
+        top: '#2a2a2a',
+        vent: '#e07934',
+        base: '#2a2a2a'
+    }),
+    Cube_Blue: createProduct('Cube_Blue', 'Cube Blue', CUBE_PERSPECTIVE, 'Cube', 'Blue', {
+        top: '#e7e7e7',
+        vent: '#276697',
+        base: '#e7e7e7'
+    }),
+    Cube_G: createProduct('Cube_G', 'Cube Gold', CUBE_PERSPECTIVE, 'Cube', 'G', {
+        top: '#e7e7e7',
+        vent: '#e07934',
+        base: '#e7e7e7'
+    }),
+    Cube_P: createProduct('Cube_P', 'Cube Pink', CUBE_PERSPECTIVE, 'Cube', 'P', {
+        top: '#e7e7e7',
+        vent: '#8b5b65',
+        base: '#e7e7e7'
+    }),
+    Cube_S: createProduct('Cube_S', 'Cube Silver', CUBE_PERSPECTIVE, 'Cube', 'S', {
+        top: '#e7e7e7',
+        vent: '#818181',
+        base: '#e7e7e7'
+    }),
 
-    // ── Duo 系列 ───────────────────────────────────────────
-    Duo_B: createProduct('Duo_B', 'Duo Black', DUO_PERSPECTIVE),
-    Duo_BG: createProduct('Duo_BG', 'Duo Black Gold', DUO_PERSPECTIVE),
-    Duo_Blue: createProduct('Duo_Blue', 'Duo Blue', DUO_PERSPECTIVE),
-    Duo_G: createProduct('Duo_G', 'Duo Gold', DUO_PERSPECTIVE),
-    Duo_Green: createProduct('Duo_Green', 'Duo Green', DUO_PERSPECTIVE),
-    Duo_P: createProduct('Duo_P', 'Duo Pink', DUO_PERSPECTIVE),
-    Duo_R: createProduct('Duo_R', 'Duo Red', DUO_PERSPECTIVE),
-    Duo_S: createProduct('Duo_S', 'Duo Silver', DUO_PERSPECTIVE)
+    // ── Duo 系列（48 × 52）───────────────────────────────
+    Duo_B: createProduct('Duo_B', 'Duo Black', DUO_PERSPECTIVE, 'Duo', 'B', {
+        top: '#272727',
+        vent: '#1a1a1a',
+        base: '#373737'
+    }),
+    Duo_BG: createProduct('Duo_BG', 'Duo Black Gold', DUO_PERSPECTIVE, 'Duo', 'BG', {
+        top: '#272727',
+        vent: '#e07934',
+        base: '#373737'
+    }),
+    Duo_Blue: createProduct('Duo_Blue', 'Duo Blue', DUO_PERSPECTIVE, 'Duo', 'Blue', {
+        top: '#e7e7e7',
+        vent: '#00899b',
+        base: '#e7e7e7'
+    }),
+    Duo_G: createProduct('Duo_G', 'Duo Gold', DUO_PERSPECTIVE, 'Duo', 'G', {
+        top: '#e7e7e7',
+        vent: '#e07934',
+        base: '#e7e7e7'
+    }),
+    Duo_Green: createProduct('Duo_Green', 'Duo Green', DUO_PERSPECTIVE, 'Duo', 'Green', {
+        top: '#e7e7e7',
+        vent: '#0a5f1c',
+        base: '#e7e7e7'
+    }),
+    Duo_P: createProduct('Duo_P', 'Duo Pink', DUO_PERSPECTIVE, 'Duo', 'P', {
+        top: '#e7e7e7',
+        vent: '#8b5b65',
+        base: '#e7e7e7'
+    }),
+    Duo_R: createProduct('Duo_R', 'Duo Red', DUO_PERSPECTIVE, 'Duo', 'R', {
+        top: '#e7e7e7',
+        vent: '#8a1313',
+        base: '#e7e7e7'
+    }),
+    Duo_S: createProduct('Duo_S', 'Duo Silver', DUO_PERSPECTIVE, 'Duo', 'S', {
+        top: '#e7e7e7',
+        vent: '#818181',
+        base: '#e7e7e7'
+    })
 };
 
-// ── 場景配置（不變）───────────────────────────────────────
+// ── 場景 / MACHINE_CONFIG / APP_CONFIG ────────────────────
 export const SCENES = [
     {
         id: 'scene_office',
@@ -122,19 +214,13 @@ export const SCENES = [
     }
 ];
 
-// ── MACHINE_CONFIG（純設計稿預設值）──────────────────────
 export const MACHINE_CONFIG = {
     machineImage: assetUrl('/machines/speaker.png'),
     stageSize: { width: STAGE_W, height: STAGE_H },
-    printArea: {
-        left: PA_LEFT, // 275（水平置中）
-        top: PA_TOP, // 164（垂直置中）
-        width: PRINT_W, // 250
-        height: PRINT_H // 271
-    }
+    // ★ 這裡也可以按需改成動態，目前保留 Duo 預設
+    printArea: { left: DUO_PA_LEFT, top: DUO_PA_TOP, width: PRINT_W, height: DUO_PRINT_H }
 };
 
-// ── APP_CONFIG（不變）─────────────────────────────────────
 export const APP_CONFIG = {
     defaultZoom: 1,
     minZoom: 0.1,

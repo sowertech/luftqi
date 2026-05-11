@@ -171,7 +171,6 @@ export function useCanvas() {
     const isProductLoaded = ref(false);
     const zoomLevel = ref(100);
 
-    // ★ 背景固定透明，不再需要 canvasBackground 狀態
     const canvasBackground = ref('transparent');
     const isTransparent = computed(() => true);
 
@@ -191,21 +190,15 @@ export function useCanvas() {
         if (!canvasEl.value || !ctx) return;
         const w = canvasEl.value.width;
         const h = canvasEl.value.height;
-
-        // ★ 完全清除，不填任何底色 → canvas 本身透明
         ctx.clearRect(0, 0, w, h);
-
-        // 繪製所有物件
         for (const obj of objects.value) {
             renderObject(ctx, obj);
         }
-
-        // 繪製選取框
         const sel = getSelected();
         if (sel) renderSelection(ctx, sel);
     };
 
-    // ─── 背景 API（保留相容介面，實際不作用）─────
+    // ─── 背景 API（保留相容介面）─────
     const setBackground = () => {
         render();
     };
@@ -261,6 +254,13 @@ export function useCanvas() {
         render();
     };
 
+    // ★ 新增：取消所有選取（匯出時使用）
+    const deselectAll = () => {
+        selectedId.value = null;
+        _notifySelect(null);
+        render();
+    };
+
     // ─── 新增物件 ─────────────────────────────────
     const addText = (text, config = {}) => {
         if (!ctx) return;
@@ -271,8 +271,8 @@ export function useCanvas() {
             fontFamily: config.fontFamily ?? 'Microsoft JhengHei',
             fontSize: config.fontSize ?? 40,
             color: config.color ?? '#000000',
-            bold: config.bold ?? false,
-            italic: config.italic ?? false,
+            bold: config.bold ?? config.fontWeight === 'bold',
+            italic: config.italic ?? config.fontStyle === 'italic',
             x: config.x ?? 100,
             y: config.y ?? 100,
             width: 0,
@@ -378,13 +378,9 @@ export function useCanvas() {
         render();
     };
 
-    // ─── 匯出 ─────────────────────────────────────
-
-    /**
-     * 匯出純設計圖 PNG（透明背景，僅設計內容）
-     */
-    const exportToPng = (multiplier = 2) => {
-        if (!canvasEl.value || !ctx) return '';
+    // ─── ★ 內部：產生不含選取框的純設計圖 DataURL ─────
+    const _renderCleanDataUrl = (multiplier = 2) => {
+        if (!canvasEl.value) return '';
         const w = canvasEl.value.width;
         const h = canvasEl.value.height;
         const off = document.createElement('canvas');
@@ -392,81 +388,134 @@ export function useCanvas() {
         off.height = h * multiplier;
         const offCtx = off.getContext('2d');
         offCtx.scale(multiplier, multiplier);
-        // ★ 不填底色，保持透明
-        for (const obj of objects.value) renderObject(offCtx, obj);
+        // ★ 只繪製物件，不繪製選取框
+        for (const obj of objects.value) {
+            renderObject(offCtx, obj);
+        }
         return off.toDataURL('image/png');
     };
 
+    // ─── 匯出 ─────────────────────────────────────
+
     /**
-     * 匯出合成圖 PNG（機台底圖 + 設計圖，無場景）
-     * @param {string} machineImageSrc - 機台圖片 URL
-     * @param {object} printArea       - { left, top, width, height }（相對於 stage）
-     * @param {object} stageSize       - { width, height }（stage 尺寸，預設 800×600）
-     * @param {number} multiplier      - 輸出倍率
-     * @returns {Promise<string>}       - DataURL
+     * 匯出純設計圖 PNG（透明背景，僅設計內容，無選取框）
      */
-    const exportComposite = (
-        machineImageSrc,
-        printArea,
-        stageSize = { width: 800, height: 600 },
-        multiplier = 2
-    ) => {
-        return new Promise((resolve) => {
-            if (!canvasEl.value) return resolve('');
-
-            const { width: stageW, height: stageH } = stageSize;
-            const off = document.createElement('canvas');
-            off.width = stageW * multiplier;
-            off.height = stageH * multiplier;
-            const offCtx = off.getContext('2d');
-            offCtx.scale(multiplier, multiplier);
-
-            const drawDesign = () => {
-                // ② 將設計內容繪製到印刷區域位置
-                offCtx.save();
-                offCtx.translate(printArea.left, printArea.top);
-
-                // 將 canvas 內容縮放貼到 printArea
-                const scaleX = printArea.width / canvasEl.value.width;
-                const scaleY = printArea.height / canvasEl.value.height;
-                offCtx.scale(scaleX, scaleY);
-
-                // 暫時清除選取後截圖
-                const prevId = selectedId.value;
-                selectedId.value = null;
-                render();
-
-                for (const obj of objects.value) renderObject(offCtx, obj);
-
-                // 還原選取
-                selectedId.value = prevId;
-                render();
-
-                offCtx.restore();
-                resolve(off.toDataURL('image/png'));
-            };
-
-            if (machineImageSrc) {
-                // ① 先畫機台底圖
-                const machineImg = new Image();
-                machineImg.crossOrigin = 'anonymous';
-                machineImg.onload = () => {
-                    offCtx.drawImage(machineImg, 0, 0, stageW, stageH);
-                    drawDesign();
-                };
-                machineImg.onerror = () => {
-                    // 機台圖載入失敗 → 只輸出設計圖
-                    drawDesign();
-                };
-                machineImg.src = machineImageSrc;
-            } else {
-                drawDesign();
-            }
-        });
+    const exportToPng = (multiplier = 2) => {
+        return _renderCleanDataUrl(multiplier);
     };
 
     /**
-     * 匯出 JPG（透明補白底）
+     * 匯出合成圖：機台底圖 + 設計稿疊合，裁切到機台邊界
+     */
+    const exportComposite = async (machineImageUrl, printArea, stageSize, multiplier = 2) => {
+        if (!canvasEl.value) return null;
+        try {
+            const outputW = stageSize.width * multiplier;
+            const outputH = stageSize.height * multiplier;
+
+            const offscreen = document.createElement('canvas');
+            offscreen.width = outputW;
+            offscreen.height = outputH;
+            const offCtx = offscreen.getContext('2d');
+
+            // 1. 載入機台底圖
+            const machineImg = await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = machineImageUrl;
+            });
+
+            // 2. 計算機台底圖 object-fit: contain 的繪製區域
+            const imgRatio = machineImg.width / machineImg.height;
+            const stageRatio = stageSize.width / stageSize.height;
+            let drawW, drawH, drawX, drawY;
+            if (imgRatio > stageRatio) {
+                drawW = outputW;
+                drawH = outputW / imgRatio;
+                drawX = 0;
+                drawY = (outputH - drawH) / 2;
+            } else {
+                drawH = outputH;
+                drawW = outputH * imgRatio;
+                drawX = (outputW - drawW) / 2;
+                drawY = 0;
+            }
+
+            // 繪製機台底圖
+            offCtx.drawImage(machineImg, drawX, drawY, drawW, drawH);
+
+            // 3. ★ 使用 _renderCleanDataUrl 取得無選取框的設計圖
+            const designDataUrl = _renderCleanDataUrl(multiplier);
+
+            // 4. 載入設計圖
+            const designImg = await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = designDataUrl;
+            });
+
+            // 5. 將設計圖繪製到印刷區域的對應位置
+            const pLeft = printArea.left * multiplier;
+            const pTop = printArea.top * multiplier;
+            const pWidth = printArea.width * multiplier;
+            const pHeight = printArea.height * multiplier;
+
+            // ★ 使用 clip 確保設計不超出印刷區域
+            offCtx.save();
+            offCtx.beginPath();
+            offCtx.rect(pLeft, pTop, pWidth, pHeight);
+            offCtx.clip();
+            offCtx.drawImage(designImg, pLeft, pTop, pWidth, pHeight);
+            offCtx.restore();
+
+            // 6. ★ 裁切：去除透明區域
+            const imageData = offCtx.getImageData(0, 0, outputW, outputH);
+            const { data } = imageData;
+            let minX = outputW,
+                minY = outputH,
+                maxX = 0,
+                maxY = 0;
+
+            for (let y = 0; y < outputH; y++) {
+                for (let x = 0; x < outputW; x++) {
+                    const alpha = data[(y * outputW + x) * 4 + 3];
+                    if (alpha > 10) {
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+                }
+            }
+
+            // 加 padding
+            const padding = 4 * multiplier;
+            minX = Math.max(0, minX - padding);
+            minY = Math.max(0, minY - padding);
+            maxX = Math.min(outputW - 1, maxX + padding);
+            maxY = Math.min(outputH - 1, maxY + padding);
+
+            const cropW = maxX - minX + 1;
+            const cropH = maxY - minY + 1;
+
+            const croppedCanvas = document.createElement('canvas');
+            croppedCanvas.width = cropW;
+            croppedCanvas.height = cropH;
+            const croppedCtx = croppedCanvas.getContext('2d');
+            croppedCtx.drawImage(offscreen, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+
+            return croppedCanvas.toDataURL('image/png');
+        } catch (err) {
+            console.error('exportComposite 失敗：', err);
+            return null;
+        }
+    };
+
+    /**
+     * 匯出 JPG（透明補白底，無選取框）
      */
     const exportToJpg = (quality = 0.92, multiplier = 2) => {
         if (!canvasEl.value || !ctx) return '';
@@ -479,6 +528,7 @@ export function useCanvas() {
         offCtx.scale(multiplier, multiplier);
         offCtx.fillStyle = '#ffffff';
         offCtx.fillRect(0, 0, w, h);
+        // ★ 只繪製物件，不繪製選取框
         for (const obj of objects.value) renderObject(offCtx, obj);
         return off.toDataURL('image/jpeg', quality);
     };
@@ -493,14 +543,8 @@ export function useCanvas() {
     };
 
     const getPreviewUrl = () => {
-        if (!canvasEl.value) return '';
-        const prevId = selectedId.value;
-        selectedId.value = null;
-        render();
-        const url = canvasEl.value.toDataURL('image/png');
-        selectedId.value = prevId;
-        render();
-        return url;
+        // ★ 直接用 _renderCleanDataUrl，不需要暫時修改選取狀態
+        return _renderCleanDataUrl(1);
     };
 
     // ─── 去背 ─────────────────────────────────────
@@ -739,6 +783,7 @@ export function useCanvas() {
         getSelected,
         selectObject,
         clearSelection,
+        deselectAll, // ★ 新增匯出
         addText,
         addImage,
         deleteSelected,

@@ -1,64 +1,68 @@
 <!-- src/components/MachinePicker.vue -->
 <template>
     <div class="picker">
-        <!-- 搜尋框 -->
-        <div class="picker-search">
-            <i class="fas fa-search"></i>
-            <input v-model="searchQuery" type="text" placeholder="搜尋機台..." />
-            <button v-if="searchQuery" class="clear-btn" @click="searchQuery = ''">
-                <i class="fas fa-times"></i>
-            </button>
+        <!-- ══ 機台大圖預覽（最上方）══ -->
+        <div class="machine-image-area">
+            <Transition name="fade" mode="out-in">
+                <img
+                    v-if="selectedProduct"
+                    :key="selectedProduct.id"
+                    :src="selectedProduct.thumbnail"
+                    :alt="selectedProduct.name"
+                    class="machine-main-image"
+                />
+                <div v-else class="machine-image-placeholder">
+                    <i class="fas fa-cube"></i>
+                </div>
+            </Transition>
         </div>
 
-        <!-- 機台列表 -->
-        <div class="picker-list">
-            <!-- 純設計稿 -->
-            <div
-                :class="['picker-item', { active: modelValue === 'pure' }]"
-                @click="select('pure')"
-            >
-                <div class="picker-thumb picker-thumb--icon">
-                    <i class="fas fa-layer-group"></i>
-                </div>
-                <div class="picker-info">
-                    <div class="picker-name">純設計稿</div>
-                    <div class="picker-desc">不套用機台外觀</div>
-                </div>
-                <i v-if="modelValue === 'pure'" class="fas fa-check-circle check-icon"></i>
-            </div>
-
-            <!-- 分隔 -->
-            <div class="picker-divider">機台列表</div>
-
-            <!-- 產品 -->
-            <div
-                v-for="product in filteredProducts"
-                :key="product.id"
-                :class="['picker-item', { active: modelValue === product.id }]"
-                @click="select(product.id)"
-            >
-                <div class="picker-thumb">
-                    <img :src="product.thumbnail" :alt="product.name" loading="lazy" />
-                </div>
-                <div class="picker-info">
-                    <div class="picker-name">{{ product.name }}</div>
-                </div>
-                <i v-if="modelValue === product.id" class="fas fa-check-circle check-icon"></i>
-            </div>
-
-            <!-- 無結果 -->
-            <div v-if="filteredProducts.length === 0" class="picker-empty">
-                <i class="fas fa-search"></i>
-                <span>找不到符合的機台</span>
+        <!-- ══ 機台種類 ══ -->
+        <div class="section-block">
+            <div class="section-label">機台種類</div>
+            <div class="category-tabs">
+                <button
+                    v-for="cat in CATEGORIES"
+                    :key="cat.id"
+                    :class="['cat-tab', { active: selectedCategory === cat.id }]"
+                    @click="selectCategory(cat.id)"
+                >
+                    <i :class="cat.icon"></i>
+                    <span>{{ cat.name }}</span>
+                </button>
             </div>
         </div>
 
-        <!-- 已選資訊條 -->
+        <!-- ══ 顏色 ══ -->
+        <Transition name="fade-slide">
+            <div v-if="selectedCategory" class="section-block">
+                <div class="section-label">
+                    顏色
+                    <span v-if="selectedProduct" class="color-hint">
+                        — {{ selectedProduct.colorName }}
+                    </span>
+                </div>
+                <div class="color-swatches">
+                    <button
+                        v-for="product in categoryProducts"
+                        :key="product.id"
+                        :class="['swatch', { active: modelValue === product.id }]"
+                        :title="product.colorName"
+                        @click="select(product.id)"
+                    >
+                        <span class="swatch-dot" :style="{ background: product.color }" />
+                        <i v-if="modelValue === product.id" class="fas fa-check swatch-check"></i>
+                    </button>
+                </div>
+            </div>
+        </Transition>
+
+        <!-- ══ 已選資訊條 ══ -->
         <Transition name="slide-up">
             <div v-if="selectedInfo" class="picker-selected-bar">
                 <i class="fas fa-check-circle"></i>
-                <span>{{ selectedInfo.name }}</span>
-                <button class="unselect-btn" @click="select(null)">
+                <span>已選：{{ selectedInfo.name }}</span>
+                <button class="unselect-btn" @click="clearSelection">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -67,37 +71,94 @@
 </template>
 
 <script setup>
-    import { ref, computed } from 'vue';
+    import { ref, computed, watch } from 'vue';
     import { PRODUCTS_CONFIG } from '../config/products';
+
+    // ── 系列定義（移除純設計稿）─────────────
+    const CATEGORIES = [
+        { id: 'Cube', name: 'Cube', icon: 'fas fa-cube' },
+        { id: 'Duo', name: 'Duo', icon: 'fas fa-mobile-alt' }
+    ];
 
     const props = defineProps({
         modelValue: { type: String, default: null }
     });
-
     const emit = defineEmits(['update:modelValue']);
 
-    const searchQuery = ref('');
+    // ── 從 modelValue 反推 category ─────────────────────────
+    function getCategoryFromId(id) {
+        if (!id) return null;
+        return PRODUCTS_CONFIG[id]?.category ?? null;
+    }
 
-    const allProducts = computed(() => Object.values(PRODUCTS_CONFIG));
+    // ── 取得某系列第一個產品 id ─────────────────────────────
+    function getDefaultProductOfCategory(catId) {
+        if (!catId) return null;
+        const products = Object.values(PRODUCTS_CONFIG).filter((p) => p.category === catId);
+        return products[0]?.id ?? null;
+    }
 
-    const filteredProducts = computed(() => {
-        const q = searchQuery.value.trim().toLowerCase();
-        if (!q) return allProducts.value;
-        return allProducts.value.filter((p) => p.name.toLowerCase().includes(q));
+    // ── 初始化 category ──────────────────────────────────────
+    const initialCategory = getCategoryFromId(props.modelValue) ?? 'Cube';
+    const selectedCategory = ref(initialCategory);
+
+    // 初次掛載：若無 modelValue，自動選 Cube 第一個顏色
+    if (!props.modelValue) {
+        const defaultId = getDefaultProductOfCategory('Cube');
+        if (defaultId) emit('update:modelValue', defaultId);
+    }
+
+    // ── 當前系列產品清單 ────────────────────────────────────
+    const categoryProducts = computed(() =>
+        selectedCategory.value
+            ? Object.values(PRODUCTS_CONFIG).filter((p) => p.category === selectedCategory.value)
+            : []
+    );
+
+    // ── 當前已選產品 ────────────────────────────────────────
+    const selectedProduct = computed(() => {
+        if (!props.modelValue) return null;
+        return PRODUCTS_CONFIG[props.modelValue] ?? null;
     });
 
-    // 已選資訊（純設計稿 or 產品）
+    // ── 底部資訊條 ──────────────────────────────────────────
     const selectedInfo = computed(() => {
         if (!props.modelValue) return null;
-        if (props.modelValue === 'pure') return { name: '純設計稿' };
-        return PRODUCTS_CONFIG[props.modelValue]
-            ? { name: PRODUCTS_CONFIG[props.modelValue].name }
-            : null;
+        return selectedProduct.value ? { name: selectedProduct.value.name } : null;
     });
 
-    const select = (id) => {
+    // ── 選系列 ──────────────────────────────────────────────
+    function selectCategory(catId) {
+        selectedCategory.value = catId;
+
+        const currentBelongs = selectedProduct.value?.category === catId;
+        if (!currentBelongs) {
+            const firstId = getDefaultProductOfCategory(catId);
+            emit('update:modelValue', firstId);
+        }
+    }
+
+    // ── 選顏色 ──────────────────────────────────────────────
+    function select(id) {
         emit('update:modelValue', id);
-    };
+    }
+
+    // ── 清除 ────────────────────────────────────────────────
+    function clearSelection() {
+        selectedCategory.value = null;
+        emit('update:modelValue', null);
+    }
+
+    // ── 外部 modelValue 改變時同步 category ─────────────────
+    watch(
+        () => props.modelValue,
+        (val) => {
+            const cat = getCategoryFromId(val);
+            if (cat && cat !== selectedCategory.value) {
+                selectedCategory.value = cat;
+            }
+        }
+    );
 </script>
 
 <style scoped>
@@ -107,169 +168,165 @@
         gap: 0;
     }
 
-    /* ── 搜尋框 ── */
-    .picker-search {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin: 10px 12px 6px;
-        padding: 6px 10px;
-        background: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
-    }
-    .picker-search i {
-        font-size: 11px;
-        color: var(--text-secondary);
-        flex-shrink: 0;
-    }
-    .picker-search input {
-        flex: 1;
-        border: none;
-        background: transparent;
-        font-size: 12px;
-        color: var(--text-primary);
-        outline: none;
-        min-width: 0;
-    }
-    .picker-search input::placeholder {
-        color: var(--text-secondary);
-    }
-    .clear-btn {
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        color: var(--text-secondary);
-        font-size: 11px;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        transition: color 0.15s;
-    }
-    .clear-btn:hover {
-        color: var(--danger-color);
-    }
-
-    /* ── 列表 ── */
-    .picker-list {
-        max-height: 260px;
-        overflow-y: auto;
-        padding: 0 8px 8px;
-    }
-    .picker-list::-webkit-scrollbar {
-        width: 3px;
-    }
-    .picker-list::-webkit-scrollbar-thumb {
-        background: var(--border-color);
-        border-radius: 2px;
-    }
-
-    /* ── 分隔標題 ── */
-    .picker-divider {
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.8px;
-        text-transform: uppercase;
-        color: var(--text-secondary);
-        padding: 8px 6px 4px;
-        opacity: 0.7;
-    }
-
-    /* ── 機台項目 ── */
-    .picker-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 7px 8px;
-        border-radius: var(--border-radius);
-        cursor: pointer;
-        transition: all 0.15s;
-        border: 1px solid transparent;
-        margin-bottom: 2px;
-    }
-    .picker-item:hover {
-        background: var(--sidebar-glass-hover);
-        border-color: var(--sidebar-glass-border);
-    }
-    .picker-item.active {
-        background: rgba(100, 138, 220, 0.3);
-        border-color: var(--primary-color);
-    }
-
-    /* 縮圖 */
-    .picker-thumb {
-        width: 36px;
-        height: 36px;
-        border-radius: var(--border-radius);
-        overflow: hidden;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        flex-shrink: 0;
-    }
-    .picker-thumb img {
+    /* ══ 機台大圖區 ══ */
+    .machine-image-area {
         width: 100%;
-        height: 100%;
-        object-fit: contain;
-    }
-    .picker-thumb--icon {
+        aspect-ratio: 16 / 10;
         display: flex;
         align-items: center;
         justify-content: center;
-    }
-    .picker-thumb--icon i {
-        font-size: 15px;
-        color: var(--primary-color);
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.03) 0%,
+            rgba(255, 255, 255, 0.07) 100%
+        );
+        border-bottom: 1px solid var(--border-color);
+        overflow: hidden;
+        position: relative;
     }
 
-    /* 文字 */
-    .picker-info {
-        flex: 1;
-        min-width: 0;
+    .machine-main-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 12px;
+        transition: all 0.3s ease;
+        filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.4));
     }
-    .picker-name {
+
+    .machine-image-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        color: var(--text-secondary);
+        opacity: 0.3;
+        font-size: 48px;
+    }
+
+    /* ══ 區塊通用 ══ */
+    .section-block {
+        padding: 10px 14px 12px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .section-block:last-of-type {
+        border-bottom: none;
+    }
+
+    /* ══ 區塊標題 ══ */
+    .section-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .color-hint {
+        font-weight: 400;
+        letter-spacing: 0;
+        text-transform: none;
+        color: var(--text-primary);
+    }
+
+    /* ══ 系列 Tabs ══ */
+    .category-tabs {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .cat-tab {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 13px;
+        border-radius: 20px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
         font-size: 12px;
         font-weight: 500;
-        color: var(--text-primary);
-        overflow: hidden;
-        text-overflow: ellipsis;
+        cursor: pointer;
+        transition: all 0.15s;
         white-space: nowrap;
     }
-    .picker-desc {
+    .cat-tab i {
         font-size: 11px;
-        color: var(--text-secondary);
+    }
+    .cat-tab:hover {
+        background: var(--sidebar-glass-hover);
+        border-color: var(--primary-color);
+        color: var(--text-primary);
+    }
+    .cat-tab.active {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        color: #fff;
     }
 
-    /* 勾選圖示 */
-    .check-icon {
-        color: var(--primary-color);
-        font-size: 14px;
+    /* ══ 顏色色塊 ══ */
+    .color-swatches {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding: 2px 0;
+    }
+    .swatch {
+        position: relative;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        background: transparent;
+        cursor: pointer;
+        padding: 0;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         flex-shrink: 0;
     }
-
-    /* 無結果 */
-    .picker-empty {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        padding: 20px;
-        color: var(--text-secondary);
-        font-size: 12px;
-        text-align: center;
+    .swatch:hover {
+        transform: scale(1.15);
+        border-color: var(--text-secondary);
     }
-    .picker-empty i {
-        font-size: 20px;
-        opacity: 0.4;
+    .swatch.active {
+        border-color: var(--primary-color);
+        transform: scale(1.1);
+        box-shadow: 0 0 0 2px rgba(100, 138, 220, 0.4);
+    }
+    .swatch-dot {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        display: block;
+        box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25);
+        pointer-events: none;
+    }
+    .swatch-check {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 10px;
+        color: #fff;
+        text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+        pointer-events: none;
     }
 
-    /* ── 已選資訊條 ── */
+    /* ══ 已選資訊條 ══ */
     .picker-selected-bar {
         display: flex;
         align-items: center;
         gap: 6px;
-        margin: 0 8px 10px;
+        margin: 8px 14px;
         padding: 8px 10px;
-        background: rgba(100, 132, 220, 0.4);
+        background: rgba(100, 132, 220, 0.2);
         border: 1px solid rgba(100, 122, 220, 0.4);
         border-radius: var(--border-radius);
         font-size: 12px;
@@ -297,13 +354,31 @@
         display: flex;
         align-items: center;
         transition: color 0.15s;
-        flex-shrink: 0;
     }
     .unselect-btn:hover {
         color: var(--danger-color);
     }
 
-    /* ── Transition ── */
+    /* ══ Transitions ══ */
+    .fade-enter-active,
+    .fade-leave-active {
+        transition: opacity 0.25s ease;
+    }
+    .fade-enter-from,
+    .fade-leave-to {
+        opacity: 0;
+    }
+
+    .fade-slide-enter-active,
+    .fade-slide-leave-active {
+        transition: all 0.2s ease;
+    }
+    .fade-slide-enter-from,
+    .fade-slide-leave-to {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
     .slide-up-enter-active,
     .slide-up-leave-active {
         transition: all 0.2s ease;

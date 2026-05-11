@@ -17,6 +17,7 @@
         "pinia": "2.1.7",
         "sweetalert2": "11.26.18",
         "three": "^0.183.2",
+        "three-mesh-bvh": "^0.9.9",
         "vue": "3.4.21"
     },
     "devDependencies": {

@@ -1,5 +1,5 @@
 <template>
-    <div class="section" :class="{ collapsed: !isOpen }">
+    <div class="section" :class="{ collapsed: !isOpen, 'sidebar-section--disabled': disabled }">
         <!-- 標題列（點擊收合）-->
         <button
             class="section-header"
@@ -23,9 +23,10 @@
 <script setup>
     import { ref } from 'vue';
     const props = defineProps({
-        title: { type: String, required: true },
-        icon: { type: String, default: 'fas fa-circle' },
-        defaultOpen: { type: Boolean, default: true }
+        title: { type: String, default: '' },
+        icon: { type: String, default: '' },
+        defaultOpen: { type: Boolean, default: false },
+        disabled: { type: Boolean, default: false } // ★ 新增
     });
     const isOpen = ref(props.defaultOpen);
     const toggle = () => {
@@ -33,6 +34,10 @@
     };
 </script>
 <style scoped>
+    .sidebar-section--disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
     /* ── 外層容器 ── */
     .section {
         margin-bottom: 0.75rem;
