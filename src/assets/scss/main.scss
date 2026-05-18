@@ -165,8 +165,7 @@ body {
 .sidebar {
     pointer-events: all;
     width: 100%;
-    max-height: calc(100vh - var(--header-height) - 48px);
-    // ★ 全透明，移除所有背景相關
+    height: 100%;
     background: transparent !important;
     border: none !important;
     backdrop-filter: none !important;
@@ -175,6 +174,8 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
+    z-index: 20; /* ★ 加這個 */
 }
 
 .sidebar-scroll {
@@ -187,16 +188,22 @@ body {
 }
 
 .sidebar-float-wrap {
-    bottom: 16px;
-    pointer-events: none;
-    width: var(--sidebar-width);
+    // 移除 pointer-events: none，這是造成無法點擊的主因之一
+    pointer-events: all;
+    width: 20vw;
+
+    // 不設固定寬度，讓內容決定（sidebar-shell 是 flex-row）
+    flex-shrink: 0;
+
     height: 100%;
     display: flex;
     align-items: flex-start;
-    justify-content: center;
-    border-radius: var(--border-radius);
-    // ★ 確保透明
+    justify-content: flex-start;
     background: transparent !important;
+
+    // 確保在畫布之上
+    position: relative;
+    z-index: 20;
 }
 // =====================================================
 // ★ 右側側功能列（浮動泡泡）

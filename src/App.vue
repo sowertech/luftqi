@@ -1,8 +1,7 @@
 <template>
     <div id="app">
         <div class="app-bg" :class="isDark ? 'app-bg--dark' : 'app-bg--light'"></div>
-
-        <!-- ★ 右上角固定操作按鈕 -->
+        <!-- 右上角固定操作按鈕 -->
         <div class="top-right-actions">
             <button class="btn btn-primary" @click="ExportPng">
                 <i class="fas fa-download"></i>
@@ -12,9 +11,9 @@
                 <i :class="isDark ? 'fas fa-sun' : 'fas fa-moon'"></i>
             </button>
         </div>
-
         <div class="app-body">
-            <div class="d-flex">
+            <!-- ★ 改這裡：d-flex 改成 layout-row -->
+            <div class="layout-row">
                 <div class="sidebar-float-wrap">
                     <LeftSidebar
                         :scene-background="sceneBackground"
@@ -256,7 +255,6 @@
         position: relative;
         min-height: 100vh;
     }
-
     .app-bg {
         position: fixed;
         inset: 0;
@@ -266,7 +264,6 @@
             background-color 0.45s ease,
             background-image 0.45s ease;
     }
-
     .app-bg--light {
         background-color: var(--app-bg-base);
         background-image: repeating-conic-gradient(var(--app-grid-color) 0% 25%, transparent 0% 50%),
@@ -288,7 +285,6 @@
             100% 100%,
             100% 100%;
     }
-
     .app-bg--dark {
         background-color: var(--app-bg-base);
         background-image: repeating-conic-gradient(var(--app-grid-color) 0% 25%, transparent 0% 50%),
@@ -306,7 +302,6 @@
             100% 100%,
             100% 100%;
     }
-
     .top-right-actions {
         position: fixed;
         top: 16px;
@@ -317,9 +312,25 @@
         align-items: flex-end;
         gap: 8px;
     }
-
+    /* ★ 核心修正：讓 layout-row 撐滿高度 */
+    .layout-row {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        height: 100%; /* 撐滿 app-body */
+        position: relative;
+        z-index: 1; /* 確保在 app-bg 之上 */
+        pointer-events: all; /* 確保可以接收事件 */
+    }
     .app-body {
         position: relative;
         z-index: 10;
+        /* 撐滿剩餘空間 */
+        flex: 1;
+        width: 75%;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }
 </style>
