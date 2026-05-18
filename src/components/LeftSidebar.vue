@@ -318,7 +318,7 @@
     }
 
     .nav-label {
-        font-size: 10px;
+        font-size: 0.8rem;
         letter-spacing: 0.02em;
         line-height: 1;
         color: var(--text-secondary);
@@ -359,7 +359,7 @@
     }
 
     .panel-title {
-        font-size: 13px;
+        font-size: 1.2rem;
         font-weight: 600;
         color: var(--text-primary);
         letter-spacing: 0.04em;
