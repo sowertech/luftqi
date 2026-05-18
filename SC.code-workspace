@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"editor.codeActionsOnSave": {
+			"source.fixAll.eslint": "never"
+		},
+		"files.eol": "\n",
+		"editor.fontLigatures": false,
+		"vue-i18n.i18nPaths": "src\\locales",
+	}
+}

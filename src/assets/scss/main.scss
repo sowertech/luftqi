@@ -1,0 +1,381 @@
+// main.scss
+@import 'variables';
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    overflow: hidden; /* 或改用下面的隱藏滾動條方式 */
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', '微軟正黑體', 'Microsoft JhengHei',
+        Arial, sans-serif;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    line-height: 1.6;
+    overflow: hidden;
+}
+
+#app {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    flex-wrap: wrap;
+    align-content: center;
+}
+
+.d-flex {
+    display: flex;
+    flex-wrap: nowrap;
+}
+
+.d-flex-wrap {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+// =====================================================
+// ★ NAVBAR（浮動泡泡）
+// =====================================================
+.header {
+    // 不佔文件流，絕對浮在頁面頂部
+    transform: translateX(-50%);
+    // 泡泡尺寸：寬度自適應，最大 860px
+    width: calc(100vw - 48px);
+    height: 65px;
+    margin: 1rem 0;
+
+    // 泡泡玻璃感
+    background: var(--navbar-bg);
+    border-radius: var(--border-radius-pill);
+    box-shadow: var(--navbar-shadow);
+    backdrop-filter: blur(18px) saturate(1.5);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+
+    // 內部三欄：左空 / 中置中 LOGO / 右 action
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 0 20px;
+    gap: 12px;
+}
+
+// LOGO 區（置中欄）
+.logo {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+    white-space: nowrap;
+    justify-content: center;
+
+    i {
+        font-size: 20px;
+    }
+}
+
+// 左側預留空間（nav-tabs 可放這裡，或空白）
+.nav-tabs {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.nav-tab {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: var(--border-radius-pill);
+    white-space: nowrap;
+
+    &:hover {
+        background: var(--primary-light);
+        color: var(--primary-color);
+    }
+    &.active {
+        background: var(--primary-color);
+        color: #fff;
+        box-shadow: 0 2px 10px rgba(60, 130, 191, 0.35);
+    }
+    i {
+        font-size: 13px;
+    }
+}
+
+// 右側下載按鈕
+.header-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+// =====================================================
+// ★ 主佈局：15% | 70% | 15%（右側圖層關閉）
+// =====================================================
+.app-body {
+    // 留出 navbar 高度 + 間距
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    flex-wrap: wrap;
+    justify-content: center;
+    min-height: 0;
+    position: relative;
+    padding: 2.5rem;
+}
+
+// 中央工作區（70%）
+.center-area {
+    // 左右各留 15vw
+    margin: 0 var(--layout-side-pct);
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    min-width: 0;
+    // 畫布:工具列 = 4:1
+    // CanvasView flex:4, LeftSidebar flex:1
+}
+
+// =====================================================
+// ★ 左側功能列（浮動泡泡）
+// =====================================================
+.sidebar {
+    pointer-events: all;
+    width: 100%;
+    max-height: calc(100vh - var(--header-height) - 48px);
+    // ★ 全透明，移除所有背景相關
+    background: transparent !important;
+    border: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sidebar-scroll {
+    background: transparent !important;
+    box-shadow: none !important;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1.5rem;
+}
+
+.sidebar-float-wrap {
+    bottom: 16px;
+    pointer-events: none;
+    width: var(--sidebar-width);
+    height: 100%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    border-radius: var(--border-radius);
+    // ★ 確保透明
+    background: transparent !important;
+}
+// =====================================================
+// ★ 右側側功能列（浮動泡泡）
+// =====================================================
+.canvas-float-wrap {
+    display: flex;
+    width: 50vw;
+    height: 100%;
+    align-items: flex-start;
+    justify-content: center;
+    /* ★ 移除 pointer-events: none，畫布本身需要接收所有事件 */
+    pointer-events: all;
+    flex: 1; /* 佔滿剩餘空間 */
+    min-width: 0;
+    align-self: stretch; /* 撐滿父層高度 */
+}
+
+// =====================================================
+// ★ 圖層面板：關閉
+// =====================================================
+.layers-panel {
+    display: none !important;
+}
+
+// =====================================================
+// Buttons
+// =====================================================
+.btn {
+    padding: 8px 18px;
+    border: none;
+    border-radius: var(--border-radius-pill);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+
+    &:active {
+        transform: scale(0.97);
+    }
+    &:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none;
+    }
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: #fff;
+    border: 1px solid transparent;
+    &:hover {
+        background: var(--primary-hover);
+    }
+}
+
+.btn-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    &:hover {
+        background: var(--secondary-color);
+        color: #fff;
+    }
+}
+
+.btn-block {
+    width: 100%;
+    justify-content: center;
+}
+
+// =====================================================
+// Panel 共用
+// =====================================================
+.panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.panel-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    flex-shrink: 0;
+
+    i {
+        font-size: 16px;
+        color: var(--primary-color);
+    }
+    h3 {
+        font-size: 14px;
+        font-weight: 600;
+        flex: 1;
+    }
+}
+
+.panel-content {
+    padding: 14px;
+    flex: 1;
+    overflow-y: auto;
+
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+    &::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 2px;
+    }
+}
+
+// =====================================================
+// Scrollbar global
+// =====================================================
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+// =====================================================
+// Animations
+// =====================================================
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes bubbleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.94) translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.header {
+    animation: bubbleIn 0.3s var(--transition-base) both;
+}
+.sidebar {
+    animation: bubbleIn 0.35s 0.05s var(--transition-base) both;
+}
+
+// =====================================================
+// Responsive
+// =====================================================
+@media (max-width: 1200px) {
+    :root {
+        --layout-side-pct: 8%;
+        --sidebar-width: 270px;
+    }
+    .nav-tab span {
+        display: none;
+    }
+}
+@media (max-width: 900px) {
+    :root {
+        --layout-side-pct: 2%;
+        --sidebar-width: 250px;
+    }
+}
