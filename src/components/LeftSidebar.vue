@@ -200,16 +200,6 @@
         }
     );
 
-    // 選完機台後自動切到「文字」或「圖片」面板（而非 adjust，因為還沒選物件）
-    watch(
-        () => props.selectedMachine,
-        (val) => {
-            if (val && activeTab.value === 'machine') {
-                activeTab.value = 'text';
-            }
-        }
-    );
-
     // ★ 需求1：點選畫布物件時，自動跳到調整面板
     watch(
         () => props.selectedObjectType,
