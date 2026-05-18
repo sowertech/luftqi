@@ -244,8 +244,10 @@
     .sidebar-shell {
         display: flex;
         flex-direction: row;
+        width: 100%;
         height: 100%;
         position: relative;
+        padding: 1.5rem 0 1.5rem 1.5rem;
     }
 
     /* ═══════════════════════════════════════
@@ -346,6 +348,7 @@
 
     .panel-header {
         display: flex;
+        height: 52px;
         align-items: center;
         justify-content: space-between;
         padding: 14px 16px 10px;
