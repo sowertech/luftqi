@@ -327,7 +327,7 @@
         z-index: 10;
         /* 撐滿剩餘空間 */
         flex: 1;
-        width: 75%;
+        width: 80%;
         height: 100vh;
         display: flex;
         flex-direction: column;

@@ -190,10 +190,7 @@ body {
 .sidebar-float-wrap {
     // 移除 pointer-events: none，這是造成無法點擊的主因之一
     pointer-events: all;
-    width: 20vw;
-
-    // 不設固定寬度，讓內容決定（sidebar-shell 是 flex-row）
-    flex-shrink: 0;
+    width: 35%;
 
     height: 100%;
     display: flex;
@@ -210,7 +207,6 @@ body {
 // =====================================================
 .canvas-float-wrap {
     display: flex;
-    width: 50vw;
     height: 100%;
     align-items: flex-start;
     justify-content: center;
