@@ -245,7 +245,9 @@
         display: flex;
         flex-direction: row;
         height: 100%;
+        width: 100%;
         position: relative;
+        padding: 1.5rem 0 1.5rem 1.5rem;
     }
 
     /* ═══════════════════════════════════════
@@ -261,8 +263,6 @@
         gap: 4px;
         background: var(--sidebar-nav-bg);
         border-right: 1px solid var(--sidebar-panel-border);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
         border-radius: var(--border-radius-lg);
     }
 
@@ -336,8 +336,6 @@
         border-radius: var(--border-radius-lg);
         background: var(--sidebar-panel-bg);
         border: 1px solid var(--sidebar-panel-border);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
         box-shadow: var(--bubble-shadow);
         transition:
             background 0.3s ease,
@@ -346,6 +344,7 @@
 
     .panel-header {
         display: flex;
+        height: 52px;
         align-items: center;
         justify-content: space-between;
         padding: 14px 16px 10px;

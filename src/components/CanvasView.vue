@@ -579,7 +579,7 @@
         overflow: hidden;
         min-width: 0;
         border-radius: var(--border-radius-lg);
-        padding: 1.5rem;
+        padding: 1.5rem 1.5rem 1.5rem 1rem;
         width: 100%;
         height: 100%;
     }
